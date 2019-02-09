@@ -1,14 +1,18 @@
 
 import numpy as np
 import pickle
+import argparse
 
 from keras.applications.mobilenet import MobileNet
 from keras.models import Model
 from keras.layers import (GlobalAveragePooling2D, Dropout, Dense)
 from keras.optimizers import Adam
+from keras.metrics import categorical_accuracy
 
 from arcface_layer import ArcFace
 
+BATCH_SIZE=32
+NO_EPOCHS = 1
 
 def get_data(file):
     # Load and unpickle CIFAR-10 batch of data
@@ -25,21 +29,26 @@ def convert_data(raw, no_channels=3, img_size=32):
     return images
 
 
-def load_cifar10():
-    # Load individual CIFAR-10 batches
-    raw_data_1, labels_1 = get_data('/home/kenneth/Data/cifar-10-batches-py/data_batch_1')
-    raw_data_2, labels_2 = get_data('/home/kenneth/Data/cifar-10-batches-py/data_batch_2')
-    raw_data_3, labels_3 = get_data('/home/kenneth/Data/cifar-10-batches-py/data_batch_3')
-    raw_data_4, labels_4 = get_data('/home/kenneth/Data/cifar-10-batches-py/data_batch_4')
-    raw_data_5, labels_5 = get_data('/home/kenneth/Data/cifar-10-batches-py/data_batch_5')
+def load_cifar10(data_path):
+    # Load individual CIFAR-10 train batches
+    raw_train_data_1, train_labels_1 = get_data(data_path + '/data_batch_1')
+    raw_train_data_2, train_labels_2 = get_data(data_path + '/data_batch_2')
+    raw_train_data_3, train_labels_3 = get_data(data_path + '/data_batch_3')
+    raw_train_data_4, train_labels_4 = get_data(data_path + '/data_batch_4')
+    raw_train_data_5, train_labels_5 = get_data(data_path + '/data_batch_5')
     
-    # Merge batches
-    raw_data = np.concatenate((raw_data_1, raw_data_2, raw_data_3, raw_data_4, raw_data_5))
-    labels = np.concatenate((labels_1, labels_2, labels_3, labels_4, labels_5))
+    # Merge train batches
+    raw_train_data = np.concatenate((raw_train_data_1, raw_train_data_2, raw_train_data_3, raw_train_data_4, raw_train_data_5))
+    train_labels = np.concatenate((train_labels_1, train_labels_2, train_labels_3, train_labels_4, train_labels_5))
 
-    # Convert image data
-    data = convert_data(raw_data)    
-    return data, labels
+    # Convert image train data
+    train_data = convert_data(raw_train_data)   
+
+    # Load test batch
+    raw_test_data, test_labels = get_data(data_path + '/test_batch')
+    test_data = convert_data(raw_test_data)   
+
+    return train_data, train_labels, test_data, test_labels
 
 
 def get_model():
@@ -65,16 +74,19 @@ def get_model():
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Perform basic training on CIFAR-10.')
+    parser.add_argument('--path', help='Path to data.')
+    args = parser.parse_args()
+
     # Load CIFAR-10 data
-    data, labels = load_cifar10()
+    train_data, train_labels, test_data, test_labels = load_cifar10(data_path=args.path)
 
     # Define and compile Keras model
     model = get_model()
 
     # Fit model to training data
-    model.fit(x=data, y=labels)
-
-
+    model.fit(x=train_data, y=train_labels, batch_size=BATCH_SIZE, epochs=NO_EPOCHS, shuffle=True)
+    
 
 if __name__ == "__main__":
     main()
